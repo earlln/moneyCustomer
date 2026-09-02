@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="796" height="763" viewBox="0 0 796 763" role="img" aria-label="evaluate_model.exe 로 모델 성능을 평가한 실제 출력">
+<title>evaluate_model.exe 로 모델 성능을 평가한 실제 출력</title>
+<rect width="796" height="763" rx="8" fill="#1e1e2e"/>
+<path d="M0 8a8 8 0 0 1 8-8h780a8 8 0 0 1 8 8v22H0z" fill="#181825"/>
+<circle cx="18" cy="15.0" r="5.5" fill="#f38ba8"/>
+<circle cx="36" cy="15.0" r="5.5" fill="#f9e2af"/>
+<circle cx="54" cy="15.0" r="5.5" fill="#a6e3a1"/>
+<text x="398.0" y="19.0" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="11.5" text-anchor="middle">명령 프롬프트  —  MoneyCustomer</text>
+<text x="16" y="57" fill="#a6e3a1" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">C:\MoneyCustomer&gt; evaluate_model.exe -d sample_input.csv</text>
+<text x="16" y="76" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">==============================================================</text>
+<text x="16" y="95" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve"> 금전 대고객 작업 분류 - 모델 성능 평가 v2.1.0</text>
+<text x="16" y="114" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">==============================================================</text>
+<text x="16" y="133" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">실행 시각: 2026-09-02 10:26:52</text>
+<text x="16" y="152" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">토크나이저 백엔드: kiwi (JVM 불필요)</text>
+<text x="16" y="171" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">모델 학습 시각: 2026-09-02T09:54:56</text>
+<text x="16" y="190" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">학습 시 기록된 검증 정확도: 0.8975</text>
+<text x="16" y="209" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">평가 데이터: C:\mc_standalone\MoneyCustomer_v2.1.0_win64\sample_input.csv</text>
+<text x="16" y="228" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">12행 로드 (인코딩: utf-8)</text>
+<text x="16" y="266" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">전처리 및 예측 수행 중...</text>
+<text x="16" y="304" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">==============================================================</text>
+<text x="16" y="323" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve"> 평가 결과 (학습에 사용되지 않은 외부 데이터)</text>
+<text x="16" y="342" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">==============================================================</text>
+<text x="16" y="361" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve"> 정확도(Accuracy): 0.9167 (91.67%)   [12행]</text>
+<text x="16" y="399" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">[분류 리포트]</text>
+<text x="16" y="418" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">              precision    recall  f1-score   support</text>
+<text x="16" y="456" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">           0       0.75      1.00      0.86         3</text>
+<text x="16" y="475" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">           1       1.00      0.67      0.80         3</text>
+<text x="16" y="494" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">           2       1.00      1.00      1.00         3</text>
+<text x="16" y="513" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">           3       1.00      1.00      1.00         3</text>
+<text x="16" y="551" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">    accuracy                           0.92        12</text>
+<text x="16" y="570" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">   macro avg       0.94      0.92      0.91        12</text>
+<text x="16" y="589" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">weighted avg       0.94      0.92      0.91        12</text>
+<text x="16" y="627" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">[혼동 행렬] (행: 실제값, 열: 예측값)</text>
+<text x="16" y="646" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">[[3 0 0 0]</text>
+<text x="16" y="665" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve"> [1 2 0 0]</text>
+<text x="16" y="684" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve"> [0 0 3 0]</text>
+<text x="16" y="703" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve"> [0 0 0 3]]</text>
+<text x="16" y="741" fill="#cdd6f4" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', 'D2Coding', 'Malgun Gothic', monospace" font-size="13" xml:space="preserve">[완료] 평가 결과를 저장했습니다: C:\mc_standalone\MoneyCustomer_v2.1.0_win64\evaluation_report.txt</text>
+</svg>

@@ -72,6 +72,40 @@ MoneyCustomer_v2.1.0_win64/
 빌드 파이프라인은 매 릴리스마다 파이썬을 `PATH` 에서 제거하고 `JAVA_HOME` 을 비운 상태로
 저장소 밖 폴더에 패키지를 복사해 세 exe 를 모두 실행하는 검증을 거칩니다.
 
+## 실행 화면
+
+아래는 **실제 실행 출력**입니다. v2.1.0 릴리스 빌드의 검증 단계에서
+`MoneyCustomer_v2.1.0_win64` 패키지를 파이썬·Java 가 없는 상태로 풀어
+Windows 에서 exe 를 직접 실행한 결과를 그대로 옮겼습니다
+([해당 빌드 로그](https://github.com/earlln/moneyCustomer/actions/runs/33619263961)).
+
+### 분류 실행 — `batch_predict.exe`
+
+CSV 를 읽어 각 행을 분류하고 결과 CSV 를 저장합니다. 가장 자주 쓰는 기능입니다.
+
+![batch_predict.exe 실행 출력](docs/images/batch_predict.svg)
+
+### 성능 평가 — `evaluate_model.exe`
+
+정답 컬럼이 있는 CSV 로 모델의 실력을 확인합니다.
+
+![evaluate_model.exe 실행 출력](docs/images/evaluate_model.svg)
+
+### 재학습 — `train_model.exe`
+
+학습 데이터를 바꾼 뒤 모델을 다시 만듭니다.
+
+> 아래 캡처는 빌드 검증용으로 **1,200행만 잘라낸 축소 데이터**를 쓴 것이라
+> 검증 정확도가 78.33% 로 낮게 나옵니다. 실제 배포 모델은 전체 20,000행으로
+> 학습해 **0.8975** 입니다 (위 [정확도 표](#정확도에-대한-중요한-정정) 참고).
+
+![train_model.exe 실행 출력](docs/images/train_model.svg)
+
+캡처 원본 텍스트는 [`docs/captures/`](docs/captures) 에 있고,
+[`docs/make_terminal_svg.py`](docs/make_terminal_svg.py) 가 그 텍스트를 위 이미지로
+렌더링합니다. 출력 내용은 손대지 않으므로, 갱신하려면 txt 를 새 실행 결과로 바꾸고
+스크립트를 다시 돌리면 됩니다.
+
 ## 사용 방법
 
 ### exe 로 실행 (Java · 파이썬 불필요)
@@ -120,6 +154,8 @@ pyinstaller --noconfirm --clean MoneyCustomer.spec
 | `evaluate_model.py` | 성능 평가 |
 | `korean_tokenizer.py` | **Java 없는 한국어 토크나이저** (`kiwi` / `regex` 백엔드) |
 | `tests/test_logic.py` | 판정 로직 단위 테스트 (`python tests/test_logic.py`) |
+| `docs/captures/` | 위 실행 화면의 원본 출력 텍스트 |
+| `docs/make_terminal_svg.py` | 캡처 텍스트를 터미널 모양 SVG 로 렌더링 |
 | `common.py` | 세 모듈이 공유하는 설정 · 인코딩 · CLI 유틸리티 |
 | `mc_entry.py` | exe 번들 공용 진입점 (실행 파일 이름으로 명령 분기) |
 | `MoneyCustomer.spec` | PyInstaller 빌드 스펙 |
