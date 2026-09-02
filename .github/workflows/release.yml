@@ -31,7 +31,9 @@ permissions:
 
 env:
   PACKAGE_NAME: MoneyCustomer_${{ inputs.tag }}_win64
-  PYTHONIOENCODING: utf-8
+# PYTHONIOENCODING 은 일부러 설정하지 않는다. 이 변수를 켜 두면 출력 인코딩
+# 문제가 가려져, 배포 대상 PC 에서만 UnicodeEncodeError 가 터지는 상황을
+# 빌드 단계에서 잡을 수 없다. exe 자체가 UTF-8 출력을 보장해야 한다.
 
 jobs:
   build-windows-exe:
@@ -75,60 +77,144 @@ jobs:
           cp features.json request_model.pkl request_vectorizer.pkl "$pkg/"
           cp model_meta.json "$pkg/" 2>/dev/null || echo "model_meta.json 없음 - 건너뜀"
           cp train_20260527.csv sample_input.csv "$pkg/"
-          cp README.md 사용설명서.txt "$pkg/"
+          cp README.md 사용설명서.txt 자체점검.bat "$pkg/"
           ls -la "$pkg"
 
-      - name: 스모크 테스트 (Java 없이 실제 exe 실행)
+      - name: 스모크 테스트 (파이썬·Java 없는 stand-alone PC 시뮬레이션)
         shell: bash
-        # 배포될 패키지를 그대로 복사해 세 exe 를 모두 실행한다.
-        # train_model 은 모델 파일을 덮어쓰므로 반드시 사본(smoke/)에서 돌린다.
+        # 배포 대상은 파이썬도 Java 도 설치되지 않은 stand-alone PC 다.
+        # 러너에는 빌드용 파이썬이 깔려 있으므로, 그대로 실행하면 시스템 파이썬에
+        # 의존하는지 알 수 없다. 따라서
+        #   1) PATH 에서 파이썬 경로를 모두 제거하고
+        #   2) PYTHONHOME/PYTHONPATH/JAVA_HOME 등 관련 환경변수를 비우고
+        #   3) 저장소 밖의 별도 폴더로 복사해
+        # 실제 배포 환경과 동일한 조건에서 세 exe 를 모두 실행한다.
         run: |
           set -euo pipefail
-          cp -r "package/${PACKAGE_NAME}" smoke
-          cd smoke
 
-          echo "----- batch_predict -----"
-          ./batch_predict.exe -i sample_input.csv -o smoke_output.csv --show --no-pause
+          target="/c/mc_standalone/${PACKAGE_NAME}"
+          mkdir -p "$(dirname "$target")"
+          cp -r "package/${PACKAGE_NAME}" "$target"
 
-          echo "----- evaluate_model -----"
-          ./evaluate_model.exe -d sample_input.csv --no-pause
+          # PATH 에서 파이썬이 들어 있는 디렉터리를 전부 제거한다.
+          clean_path=""
+          while IFS= read -r dir; do
+            [ -z "$dir" ] && continue
+            if [ -e "$dir/python.exe" ] || [ -e "$dir/python3.exe" ] || [ -e "$dir/pythonw.exe" ]; then
+              echo "PATH 에서 제거: $dir"
+              continue
+            fi
+            case "$dir" in
+              *[Pp]ython*|*[Pp]ip*|*hostedtoolcache*) echo "PATH 에서 제거: $dir"; continue ;;
+            esac
+            clean_path="${clean_path:+$clean_path:}$dir"
+          done < <(echo "$PATH" | tr ':' '\n')
 
-          echo "----- train_model (축소 데이터) -----"
-          python - <<'PY'
-          import csv, json
-          with open('train_20260527.csv', encoding='cp949', newline='') as f:
+          run_standalone() {
+            env -u PYTHONHOME -u PYTHONPATH -u PYTHONSTARTUP -u PYTHONEXECUTABLE \
+                -u JAVA_HOME -u JRE_HOME -u CLASSPATH -u VIRTUAL_ENV -u CONDA_PREFIX \
+                PATH="$clean_path" "$@"
+          }
+
+          echo "----- stand-alone 환경 확인 (python·java 가 없어야 정상) -----"
+          # 하위 셸을 띄우지 않고 정리된 PATH 를 직접 훑어 확인한다.
+          # (하위 셸 실행이 실패하면 "못 찾음" 과 구분되지 않기 때문)
+          leaked=""
+          while IFS= read -r dir; do
+            [ -z "$dir" ] && continue
+            for exe in python.exe python3.exe pythonw.exe java.exe; do
+              [ -e "$dir/$exe" ] && leaked="$leaked $dir/$exe"
+            done
+          done < <(echo "$clean_path" | tr ':' '\n')
+          if [ -n "$leaked" ]; then
+            echo "::error::정리된 PATH 에 인터프리터가 남아 있어 stand-alone 검증이 무의미합니다:$leaked"
+            exit 1
+          fi
+          echo "파이썬·Java 없는 환경 확인 완료"
+
+          # 작업 디렉터리를 exe 폴더 바깥에 두어, 설정·모델 파일을 exe 위치 기준으로
+          # 찾는지(더블클릭·바로가기 실행 시나리오) 함께 검증한다.
+          cd /c
+
+          echo "----- batch_predict.exe -----"
+          run_standalone "$target/batch_predict.exe" -i sample_input.csv -o smoke_output.csv --show --no-pause
+
+          # 배치 스케줄러처럼 콘솔이 아닌 파일로 출력을 넘기는 경우도 확인한다.
+          # 이때 파이썬은 콘솔 유니코드 API 대신 시스템 ANSI 코드페이지를 쓰므로,
+          # exe 가 UTF-8 출력을 보장하지 않으면 한글에서 UnicodeEncodeError 가 난다.
+          echo "----- batch_predict.exe (출력 리다이렉션) -----"
+          run_standalone "$target/batch_predict.exe" -i sample_input.csv -o redirect_output.csv --no-pause > "$target/redirect_stdout.log" 2>&1
+          tail -n 5 "$target/redirect_stdout.log"
+
+          echo "----- evaluate_model.exe -----"
+          run_standalone "$target/evaluate_model.exe" -d sample_input.csv --no-pause
+
+          echo "----- train_model.exe (축소 데이터로 재학습) -----"
+          python - "$target" <<'PY'
+          import csv, json, os, sys
+          target = sys.argv[1]
+          with open(os.path.join(target, 'train_20260527.csv'), encoding='cp949', newline='') as f:
               rows = list(csv.reader(f))
-          with open('mini.csv', 'w', encoding='utf-8-sig', newline='') as f:
+          with open(os.path.join(target, 'mini.csv'), 'w', encoding='utf-8-sig', newline='') as f:
               csv.writer(f).writerows(rows[:1201])
-          cfg = json.load(open('features.json', encoding='utf-8'))
+          cfg_path = os.path.join(target, 'features.json')
+          cfg = json.load(open(cfg_path, encoding='utf-8'))
           cfg['files']['train_data'] = 'mini.csv'
-          json.dump(cfg, open('features.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+          json.dump(cfg, open(cfg_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
           PY
-          ./train_model.exe --no-pause
+          run_standalone "$target/train_model.exe" --no-pause
 
-          echo "----- 결과 검증 -----"
-          python - <<'PY'
-          import csv, json, os
+      - name: 스모크 테스트 결과 검증
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - "/c/mc_standalone/${PACKAGE_NAME}" <<'PY'
+          import csv, json, os, sys
 
-          with open('smoke_output.csv', encoding='utf-8-sig') as f:
+          target = sys.argv[1]
+          p = lambda *a: os.path.join(target, *a)
+
+          # 1) 추론 결과 컬럼 구성
+          with open(p('smoke_output.csv'), encoding='utf-8-sig') as f:
               rows = list(csv.DictReader(f))
           assert rows, '추론 결과가 비어 있습니다'
           for col in ('prediction', 'label', 'prob_0', 'prob_1', 'prob_2', 'prob_3',
                       'is_major', 'major_label'):
               assert col in rows[0], f'결과 컬럼 누락: {col}'
 
-          assert os.path.exists('evaluation_report.txt'), '평가 리포트가 생성되지 않았습니다'
-          assert os.path.exists('train_log.txt'), '학습 로그가 생성되지 않았습니다'
+          # 2) 콘솔이 아닌 파일로 출력해도 한글이 깨지거나 죽지 않아야 한다
+          log = open(p('redirect_stdout.log'), encoding='utf-8').read()
+          assert 'UnicodeEncodeError' not in log, f'출력 리다이렉션 시 인코딩 오류:\n{log[-2000:]}'
+          assert '결과 요약' in log, f'리다이렉션 로그에 한글이 정상 기록되지 않았습니다:\n{log[-2000:]}'
+          assert os.path.exists(p('redirect_output.csv')), '리다이렉션 실행의 결과 CSV 가 없습니다'
 
-          meta = json.load(open('model_meta.json', encoding='utf-8'))
+          # 3) 평가·재학습 산출물
+          assert os.path.exists(p('evaluation_report.txt')), '평가 리포트가 없습니다'
+          assert os.path.exists(p('train_log.txt')), '학습 로그가 없습니다'
+          meta = json.load(open(p('model_meta.json'), encoding='utf-8'))
           assert meta['tokenizer']['backend'] == 'kiwi', meta['tokenizer']
           assert meta['train_data'] == 'mini.csv', meta['train_data']
 
-          print(f"스모크 테스트 통과: {len(rows)}행 추론 / 평가 / 재학습 모두 정상")
-          PY
+          # 4) 파이썬 없는 PC 를 위해 런타임이 번들에 들어있는지 확인
+          internal = p('_internal')
+          names = {n.lower() for n in os.listdir(internal)}
+          assert any(n.startswith('python3') and n.endswith('.dll') for n in names), \
+              f'파이썬 런타임 DLL 이 번들에 없습니다: {sorted(names)[:40]}'
+          # Windows 에 기본 탑재되지 않을 수 있는 MSVC 런타임도 함께 배포되어야 한다.
+          for dll in ('vcruntime140.dll', 'msvcp140.dll'):
+              assert dll in names, f'{dll} 이 번들에 없습니다 (VC++ 재배포 패키지 의존 위험)'
 
-          cd ..
-          rm -rf smoke
+          # 5) Java 흔적이 없어야 한다
+          for root, _, files in os.walk(target):
+              for f in files:
+                  low = f.lower()
+                  assert not low.endswith('.jar'), f'jar 파일 발견: {os.path.join(root, f)}'
+                  assert 'jvm' not in low and 'jpype' not in low, \
+                      f'Java 관련 파일 발견: {os.path.join(root, f)}'
+
+          print(f'stand-alone 스모크 테스트 통과: {len(rows)}행 추론 / 평가 / 재학습 정상')
+          PY
+          rm -rf "/c/mc_standalone"
 
       - name: 압축
         shell: bash

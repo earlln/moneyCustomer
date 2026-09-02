@@ -11,6 +11,30 @@ META_FILENAME = "model_meta.json"
 _ENCODING_CANDIDATES = ("utf-8", "utf-8-sig", "cp949", "euc-kr")
 
 
+def configure_stdio() -> None:
+    """표준 출력이 한글을 항상 안전하게 출력하도록 UTF-8 로 고정한다.
+
+    Windows 콘솔에 직접 붙어 있을 때는 파이썬이 유니코드 API 를 쓰므로 문제가
+    없지만, 출력을 파일이나 파이프로 넘기면(배치 스케줄러의 ``> log.txt``,
+    다른 프로그램으로의 파이프 등) 시스템 ANSI 코드페이지가 쓰인다.
+    영문 Windows(cp1252)에서는 이때 한글을 인코딩하지 못해
+    ``UnicodeEncodeError`` 로 프로그램이 죽는다.
+
+    출력 실패로 작업 자체가 중단되는 일이 없도록 인코딩을 UTF-8 로 맞추고,
+    그래도 표현할 수 없는 문자는 예외 대신 대체 표기로 흘려보낸다.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (AttributeError, ValueError, OSError):
+            # 리다이렉션 방식에 따라 reconfigure 가 없거나 실패할 수 있다.
+            # 그 경우에도 프로그램은 계속 진행되어야 한다.
+            pass
+
+
+configure_stdio()
+
+
 def base_dir() -> str:
     """스크립트 또는 exe 가 놓인 디렉터리.
 

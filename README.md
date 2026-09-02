@@ -30,17 +30,19 @@ v1.8 문서에 적힌 **96.58%** 는 *학습에 사용한 데이터를 그대로
 
 v2.0.0 의 `evaluate_model` 은 두 수치를 모두 출력하되 검증 구간 값을 먼저 보여줍니다.
 
-## 다운로드
+## 다운로드 및 설치 (stand-alone PC)
 
-[Releases](../../releases) 에서 `MoneyCustomer_v2.0.0_win64.zip` 을 내려받아 압축을 풀면
-Java 도 파이썬도 없는 Windows PC 에서 바로 실행할 수 있습니다.
+[Releases](../../releases) 에서 `MoneyCustomer_v2.0.0_win64.zip` 을 내려받아 압축을 풉니다.
+**파이썬 · Java · 인터넷 · 관리자 권한 모두 필요 없습니다.** 파이썬 런타임과 형태소 사전이
+`_internal/` 안에 함께 들어 있습니다.
 
 ```
 MoneyCustomer_v2.0.0_win64/
 ├─ batch_predict.exe        추론
 ├─ train_model.exe          재학습
 ├─ evaluate_model.exe       성능 평가
-├─ _internal/               세 exe 가 공유하는 런타임 (삭제 금지)
+├─ 자체점검.bat             설치 직후 동작 확인용
+├─ _internal/               파이썬 런타임 · 라이브러리 · 형태소 사전 (삭제 금지)
 ├─ features.json            설정
 ├─ request_model.pkl        학습된 모델
 ├─ request_vectorizer.pkl   학습된 벡터라이저
@@ -49,6 +51,26 @@ MoneyCustomer_v2.0.0_win64/
 ├─ sample_input.csv         동작 확인용 예시
 └─ 사용설명서.txt
 ```
+
+### 설치 절차
+
+1. zip 을 USB 등으로 대상 PC 에 옮깁니다. (압축 약 250MB, 해제 후 약 400MB)
+2. **`C:\MoneyCustomer` 처럼 짧은 경로**에 압축을 풉니다.
+   경로가 너무 길면 Windows 경로 길이 제한(260자)에 걸릴 수 있습니다.
+3. `자체점검.bat` 을 더블클릭합니다. 예시 12건이 분류되면 설치 성공입니다.
+
+### 설치 시 주의 사항
+
+| 항목 | 내용 |
+|---|---|
+| 대상 OS | 64비트 Windows 10 이상 |
+| 폴더 구조 | `_internal/` 은 exe 와 같은 위치에 있어야 합니다. exe 만 복사하면 실행되지 않습니다. |
+| 설치 위치 | `C:\Program Files` 아래는 피하세요. 결과 CSV·로그를 프로그램 폴더에 쓰기 때문에 쓰기 권한이 필요합니다. |
+| 백신 · SmartScreen | 코드 서명이 없어 경고가 뜰 수 있습니다. 사내 배포 시 예외 등록이 필요할 수 있습니다. |
+| 파일 경로 기준 | 설정·모델·입출력 파일은 **exe 가 있는 폴더** 기준으로 찾습니다. 바로가기나 다른 폴더에서 실행해도 동작합니다. |
+
+빌드 파이프라인은 매 릴리스마다 파이썬을 `PATH` 에서 제거하고 `JAVA_HOME` 을 비운 상태로
+저장소 밖 폴더에 패키지를 복사해 세 exe 를 모두 실행하는 검증을 거칩니다.
 
 ## 사용 방법
 
