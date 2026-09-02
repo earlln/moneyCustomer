@@ -7,7 +7,7 @@
 > 형태소 분석기를 KoNLPy `Okt`(Java 기반) 에서 `kiwipiepy`(C++ 기반) 로 교체했고,
 > 파이썬조차 없는 PC 를 위해 Windows `.exe` 로 빌드해 배포합니다.
 
-| 항목 | v1.8.0 | v2.0.0 |
+| 항목 | v1.8.0 | v2.1.0 |
 |---|---|---|
 | 형태소 분석 | KoNLPy `Okt` | `kiwipiepy` |
 | **Java 필요 여부** | **필수** | **불필요** |
@@ -23,7 +23,7 @@ v1.8 문서에 적힌 **96.58%** 는 *학습에 사용한 데이터를 그대로
 값이라 실제 성능보다 크게 부풀려져 있습니다. 학습에 쓰이지 않은 검증 구간(20%)에서
 다시 측정한 값이 위 표의 "검증 정확도" 입니다.
 
-| 측정 방식 | v1.8 모델 | v2.0.0 모델 |
+| 측정 방식 | v1.8 모델 | v2.1.0 모델 |
 |---|---|---|
 | 전체 20,000행 (학습 데이터 포함 · 과대평가) | 0.9658 | 0.9769 |
 | 검증 4,000행 (학습에 미사용 · **실제 성능**) | **0.8695 (86.95%)** | **0.8975 (89.75%)** |
@@ -32,12 +32,12 @@ v2.0.0 의 `evaluate_model` 은 두 수치를 모두 출력하되 검증 구간 
 
 ## 다운로드 및 설치 (stand-alone PC)
 
-[Releases](../../releases) 에서 `MoneyCustomer_v2.0.0_win64.zip` 을 내려받아 압축을 풉니다.
+[Releases](../../releases) 에서 `MoneyCustomer_v2.1.0_win64.zip` 을 내려받아 압축을 풉니다.
 **파이썬 · Java · 인터넷 · 관리자 권한 모두 필요 없습니다.** 파이썬 런타임과 형태소 사전이
 `_internal/` 안에 함께 들어 있습니다.
 
 ```
-MoneyCustomer_v2.0.0_win64/
+MoneyCustomer_v2.1.0_win64/
 ├─ batch_predict.exe        추론
 ├─ train_model.exe          재학습
 ├─ evaluate_model.exe       성능 평가
@@ -155,14 +155,16 @@ pyinstaller --noconfirm --clean MoneyCustomer.spec
 | 키 | 기본값 | 설명 |
 |---|---|---|
 | `threshold` | `0.5` | 주요작업 판정 확률 기준 |
-| `major_rule` | `"any"` | `any` = 개별 확률 중 하나라도 threshold 이상 (v1.8 호환)<br>`sum` = 주요 클래스 확률의 **합**이 threshold 이상 (확률적으로 정확) |
+| `major_rule` | `"sum"` | `sum` = 주요 클래스 확률의 **합**이 threshold 이상 (v2.1.0 기본값, 확률적으로 정확)<br>`any` = 개별 확률 중 하나라도 threshold 이상 (v1.8 ~ v2.0.0 동작) |
 | `blank_row_policy` | `"trailing"` | `trailing` = 파일 **끝**의 빈 행만 제외<br>`stop_at_first` = 첫 빈 행에서 중단 (v1.8 호환, 데이터 누락 위험) |
 | `tokenizer.backend` | `"kiwi"` | `kiwi` / `regex` — 둘 다 Java 불필요 |
 | `vectorizer` | 15,000 · 1~2gram | TF-IDF 설정 |
 | `model_params` | — | LightGBM 하이퍼파라미터 |
 
-`major_rule` 을 `sum` 으로 바꾸면 재학습 없이 즉시 반영됩니다. 학습 데이터 20,000행에서
-두 규칙의 판정이 갈리는 행은 94건(0.47%)이며, 그중 `sum` 이 맞은 경우가 63건이었습니다.
+**v2.1.0 에서 `major_rule` 기본값이 `any` → `sum` 으로 바뀌었습니다.** 학습 데이터
+20,000행 기준 판정이 달라지는 행은 94건(0.47%)이고, 변경 방향은 비주요작업 → 주요작업
+한쪽뿐이라 놓치던 건을 더 잡습니다. 주요작업 판정 정확도는 0.9834 → 0.9850 입니다.
+이전 기준이 필요하면 `"any"` 로 되돌리면 되며, 두 값 모두 **재학습이 필요 없습니다.**
 `tokenizer` 설정을 바꾼 경우에만 재학습이 필요합니다.
 
 ## 토크나이저 설정

@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller 스펙 - 금전 대고객 작업 분류 v2.0.0
+"""PyInstaller 스펙 - 금전 대고객 작업 분류 v2.1.0
 
 세 실행 파일이 하나의 런타임(_internal)을 공유하도록 묶는다.
 Java(JVM)는 전혀 필요하지 않다.

@@ -1,4 +1,4 @@
-"""PyInstaller 번들의 공용 진입점 (v2.0.0).
+"""PyInstaller 번들의 공용 진입점 (v2.1.0).
 
 세 실행 파일(batch_predict / train_model / evaluate_model)은 파이썬 런타임과
 scikit-learn·LightGBM·kiwipiepy 모델 등 350MB 가 넘는 동일한 의존성을 공유한다.

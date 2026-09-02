@@ -1,4 +1,4 @@
-"""금전 대고객 작업 분류 - 배치 추론 모듈 (v2.0.0)
+"""금전 대고객 작업 분류 - 배치 추론 모듈 (v2.1.0)
 
 CSV 를 읽어 각 행을 분류하고 결과 CSV 를 저장합니다.
 v1.8 과 달리 Java(JVM)가 필요 없습니다.
@@ -140,7 +140,7 @@ def trim_blank_rows(df, input_columns, policy="trailing", log=print):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="금전 대고객 작업 분류 - 배치 추론 v2.0.0 (Java 불필요)"
+        description="금전 대고객 작업 분류 - 배치 추론 v2.1.0 (Java 불필요)"
     )
     parser.add_argument("-i", "--input", default=None, help="입력 CSV 파일 (기본: features.json 설정값)")
     parser.add_argument("-o", "--output", default=None, help="출력 CSV 파일 (기본: features.json 설정값)")

@@ -1,4 +1,4 @@
-"""세 실행 모듈(train / predict / evaluate)이 공유하는 유틸리티 (v2.0.0)."""
+"""세 실행 모듈(train / predict / evaluate)이 공유하는 유틸리티 (v2.1.0)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import json
 import os
 import sys
 
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 META_FILENAME = "model_meta.json"
 _ENCODING_CANDIDATES = ("utf-8", "utf-8-sig", "cp949", "euc-kr")
 

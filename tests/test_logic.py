@@ -101,6 +101,22 @@ check("class_labels 기준으로 클래스 도출",
 check("설정에 없는 모델 클래스도 포함",
       common.resolve_classes({"class_labels":{"0":"a"}}, M3()) == [0,1,2])
 
+# --- 배포되는 features.json 기본값 ------------------------------------
+import json
+
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+cfg = json.load(open(os.path.join(root, 'features.json'), encoding='utf-8'))
+
+check("features.json 의 major_rule 은 sum (v2.1.0 기본값)",
+      cfg.get('major_rule') == 'sum', repr(cfg.get('major_rule')))
+check("features.json 의 blank_row_policy 는 trailing",
+      cfg.get('blank_row_policy') == 'trailing', repr(cfg.get('blank_row_policy')))
+check("features.json 의 tokenizer 백엔드는 Java 를 쓰지 않는다",
+      cfg.get('tokenizer', {}).get('backend') in ('kiwi', 'regex'),
+      repr(cfg.get('tokenizer', {}).get('backend')))
+check("major_classes 가 class_labels 안에 있다",
+      all(str(c) in cfg.get('class_labels', {}) for c in cfg.get('major_classes', [])))
+
 print()
 print(f"=== {len(fails)} 실패 ===" if fails else "=== 전체 통과 ===")
 sys.exit(1 if fails else 0)

@@ -1,4 +1,4 @@
-"""금전 대고객 작업 분류 - 모델 성능 평가 도구 (v2.0.0)
+"""금전 대고객 작업 분류 - 모델 성능 평가 도구 (v2.1.0)
 
 정답 컬럼이 있는 CSV 를 읽어 정확도·분류 리포트·혼동 행렬을 산출합니다.
 v1.8 과 달리 Java(JVM)가 필요 없습니다.
@@ -44,7 +44,7 @@ def evaluate(y_true, y_pred, title, log):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="금전 대고객 작업 분류 - 모델 성능 평가 v2.0.0 (Java 불필요)"
+        description="금전 대고객 작업 분류 - 모델 성능 평가 v2.1.0 (Java 불필요)"
     )
     parser.add_argument("-d", "--data", default=None, help="평가 CSV 파일 (기본: features.json 의 train_data)")
     parser.add_argument("--encoding", default=None, help="CSV 인코딩 (기본: 자동 판별)")

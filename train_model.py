@@ -1,4 +1,4 @@
-"""금전 대고객 작업 분류 - 모델 학습 모듈 (v2.0.0)
+"""금전 대고객 작업 분류 - 모델 학습 모듈 (v2.1.0)
 
 v1.8 과 달리 Java(JVM)가 필요 없습니다. 형태소 분석은 ``korean_tokenizer`` 가
 담당하며 기본 백엔드는 순수 네이티브 구현인 ``kiwipiepy`` 입니다.
@@ -64,7 +64,7 @@ def build_model(config):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="금전 대고객 작업 분류 - 모델 학습 v2.0.0 (Java 불필요)"
+        description="금전 대고객 작업 분류 - 모델 학습 v2.1.0 (Java 불필요)"
     )
     parser.add_argument("-d", "--data", default=None, help="학습 CSV 파일 (기본: features.json 설정값)")
     parser.add_argument("--encoding", default=None, help="CSV 인코딩 (기본: 자동 판별)")
