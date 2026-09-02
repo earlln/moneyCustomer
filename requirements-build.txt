@@ -1,0 +1,3 @@
+# exe 빌드 전용 의존성 (실행에는 필요 없음)
+-r requirements.txt
+pyinstaller>=6.6

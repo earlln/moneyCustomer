@@ -1,0 +1,203 @@
+name: Release
+
+# Windows 용 exe 를 빌드하고 GitHub Release 를 생성한다.
+# PyInstaller 는 크로스 컴파일을 지원하지 않으므로 exe 빌드는 반드시
+# windows-latest 러너에서 수행해야 한다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '릴리스 태그 (예: v2.0.0)'
+        required: true
+        type: string
+      ref:
+        description: '릴리스 대상 커밋 SHA 또는 브랜치'
+        required: true
+        type: string
+      build_windows_exe:
+        description: 'Windows exe 를 빌드해 릴리스에 첨부'
+        required: true
+        type: boolean
+        default: true
+      prerelease:
+        description: '프리릴리스로 표시'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  PACKAGE_NAME: MoneyCustomer_${{ inputs.tag }}_win64
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  build-windows-exe:
+    if: ${{ inputs.build_windows_exe }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: 의존성 설치
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-build.txt
+
+      - name: Java 미설치 상태 확인
+        shell: bash
+        # v2.0.0 의 핵심 요구사항: JVM 없이 동작해야 한다.
+        # JAVA_HOME 을 지우고 빌드/테스트해 Java 의존성이 남아있지 않음을 보장한다.
+        run: |
+          echo "JAVA_HOME=" >> "$GITHUB_ENV"
+          python -c "import importlib.util as u; assert u.find_spec('konlpy') is None, 'konlpy(Java 의존)가 설치되어 있습니다'; print('konlpy 미설치 확인')"
+
+      - name: exe 빌드 (PyInstaller)
+        shell: bash
+        run: pyinstaller --noconfirm --clean MoneyCustomer.spec
+
+      - name: 배포 패키지 구성
+        shell: bash
+        run: |
+          set -euo pipefail
+          pkg="package/${PACKAGE_NAME}"
+          mkdir -p "$pkg"
+          cp -r dist/MoneyCustomer/. "$pkg/"
+          cp features.json request_model.pkl request_vectorizer.pkl "$pkg/"
+          cp model_meta.json "$pkg/" 2>/dev/null || echo "model_meta.json 없음 - 건너뜀"
+          cp train_20260527.csv sample_input.csv "$pkg/"
+          cp README.md 사용설명서.txt "$pkg/"
+          ls -la "$pkg"
+
+      - name: 스모크 테스트 (Java 없이 실제 exe 실행)
+        shell: bash
+        # 배포될 패키지를 그대로 복사해 세 exe 를 모두 실행한다.
+        # train_model 은 모델 파일을 덮어쓰므로 반드시 사본(smoke/)에서 돌린다.
+        run: |
+          set -euo pipefail
+          cp -r "package/${PACKAGE_NAME}" smoke
+          cd smoke
+
+          echo "----- batch_predict -----"
+          ./batch_predict.exe -i sample_input.csv -o smoke_output.csv --show --no-pause
+
+          echo "----- evaluate_model -----"
+          ./evaluate_model.exe -d sample_input.csv --no-pause
+
+          echo "----- train_model (축소 데이터) -----"
+          python - <<'PY'
+          import csv, json
+          with open('train_20260527.csv', encoding='cp949', newline='') as f:
+              rows = list(csv.reader(f))
+          with open('mini.csv', 'w', encoding='utf-8-sig', newline='') as f:
+              csv.writer(f).writerows(rows[:1201])
+          cfg = json.load(open('features.json', encoding='utf-8'))
+          cfg['files']['train_data'] = 'mini.csv'
+          json.dump(cfg, open('features.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+          PY
+          ./train_model.exe --no-pause
+
+          echo "----- 결과 검증 -----"
+          python - <<'PY'
+          import csv, json, os
+
+          with open('smoke_output.csv', encoding='utf-8-sig') as f:
+              rows = list(csv.DictReader(f))
+          assert rows, '추론 결과가 비어 있습니다'
+          for col in ('prediction', 'label', 'prob_0', 'prob_1', 'prob_2', 'prob_3',
+                      'is_major', 'major_label'):
+              assert col in rows[0], f'결과 컬럼 누락: {col}'
+
+          assert os.path.exists('evaluation_report.txt'), '평가 리포트가 생성되지 않았습니다'
+          assert os.path.exists('train_log.txt'), '학습 로그가 생성되지 않았습니다'
+
+          meta = json.load(open('model_meta.json', encoding='utf-8'))
+          assert meta['tokenizer']['backend'] == 'kiwi', meta['tokenizer']
+          assert meta['train_data'] == 'mini.csv', meta['train_data']
+
+          print(f"스모크 테스트 통과: {len(rows)}행 추론 / 평가 / 재학습 모두 정상")
+          PY
+
+          cd ..
+          rm -rf smoke
+
+      - name: 압축
+        shell: bash
+        # 7z 은 windows 러너에 기본 설치되어 있고, -mcu=on 으로 한글 파일명을
+        # UTF-8 로 저장해 압축 해제 시 이름이 깨지지 않는다.
+        run: |
+          set -euo pipefail
+          7z a -tzip -mx=5 -mcu=on "${PACKAGE_NAME}.zip" "./package/${PACKAGE_NAME}"
+          ls -la "${PACKAGE_NAME}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: ${{ env.PACKAGE_NAME }}.zip
+          retention-days: 30
+
+  release:
+    needs: [build-windows-exe]
+    # exe 빌드를 건너뛴 경우(소스 전용 릴리스)에도 실행되어야 한다.
+    if: ${{ always() && (needs.build-windows-exe.result == 'success' || needs.build-windows-exe.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      # 릴리스 노트는 항상 워크플로가 실행된 브랜치 최신 상태에서 읽는다.
+      # 태그가 붙는 커밋(inputs.ref)에는 아직 노트 파일이 없을 수 있기 때문이다.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 빌드 산출물 내려받기
+        if: ${{ inputs.build_windows_exe }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: assets
+
+      - name: 릴리스 생성
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          TARGET: ${{ inputs.ref }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          notes="docs/release-notes/${TAG}.md"
+          args=(release create "$TAG" --target "$TARGET" --title "$TAG")
+          if [ -f "$notes" ]; then
+            args+=(--notes-file "$notes")
+          else
+            args+=(--generate-notes)
+          fi
+          if [ "$PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          if [ -d assets ] && [ -n "$(ls -A assets 2>/dev/null)" ]; then
+            args+=(assets/*)
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "릴리스 $TAG 가 이미 존재합니다. 자산만 갱신합니다."
+            if [ -d assets ] && [ -n "$(ls -A assets 2>/dev/null)" ]; then
+              gh release upload "$TAG" assets/* --clobber
+            fi
+            if [ -f "$notes" ]; then
+              gh release edit "$TAG" --notes-file "$notes"
+            fi
+          else
+            gh "${args[@]}"
+          fi
+
+          gh release view "$TAG"

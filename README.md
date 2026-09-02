@@ -3,51 +3,107 @@
 작업의뢰 텍스트를 읽어 **금전 / 대고객 / 금전+대고객 / 비주요작업** 4개 클래스로
 자동 분류하는 배치 처리 프로그램입니다.
 
-| 항목 | 내용 |
-|---|---|
-| 현재 버전 | **v1.8.0** |
-| 모델 | TF-IDF (word 1~2gram, 15,000 features) + LightGBM |
-| 형태소 분석 | KoNLPy `Okt` (**Java / JVM 필요**) |
-| 학습 데이터 | `train_20260527.csv` (20,000행) |
-| 검증 정확도 | **0.9658 (96.58%)** — `evaluate result.txt` 참고 |
+> **v2.0.0 부터 Java(JVM)가 필요 없습니다.**
+> 형태소 분석기를 KoNLPy `Okt`(Java 기반) 에서 `kiwipiepy`(C++ 기반) 로 교체했고,
+> 파이썬조차 없는 PC 를 위해 Windows `.exe` 로 빌드해 배포합니다.
+
+| 항목 | v1.8.0 | v2.0.0 |
+|---|---|---|
+| 형태소 분석 | KoNLPy `Okt` | `kiwipiepy` |
+| **Java 필요 여부** | **필수** | **불필요** |
+| 배포 형태 | 파이썬 소스 | 소스 + **Windows exe** |
+| 전처리 | 한글만 보존 | 한글 + 영문 + 숫자 |
+| 설정 가능 범위 | 컬럼 · threshold | + 토크나이저 · TF-IDF · 하이퍼파라미터 |
+| 검증 정확도(holdout) | 0.8695 (86.95%) | 0.8975 (89.75%) |
+| `evaluate_model` | 오타로 실행 불가 | 정상 동작 |
+
+## 정확도에 대한 중요한 정정
+
+v1.8 문서에 적힌 **96.58%** 는 *학습에 사용한 데이터를 그대로 평가에 사용해서* 나온
+값이라 실제 성능보다 크게 부풀려져 있습니다. 학습에 쓰이지 않은 검증 구간(20%)에서
+다시 측정한 값이 위 표의 "검증 정확도" 입니다.
+
+| 측정 방식 | v1.8 모델 | v2.0.0 모델 |
+|---|---|---|
+| 전체 20,000행 (학습 데이터 포함 · 과대평가) | 0.9658 | 0.9769 |
+| 검증 4,000행 (학습에 미사용 · **실제 성능**) | **0.8695 (86.95%)** | **0.8975 (89.75%)** |
+
+v2.0.0 의 `evaluate_model` 은 두 수치를 모두 출력하되 검증 구간 값을 먼저 보여줍니다.
+
+## 다운로드
+
+[Releases](../../releases) 에서 `MoneyCustomer_v2.0.0_win64.zip` 을 내려받아 압축을 풀면
+Java 도 파이썬도 없는 Windows PC 에서 바로 실행할 수 있습니다.
+
+```
+MoneyCustomer_v2.0.0_win64/
+├─ batch_predict.exe        추론
+├─ train_model.exe          재학습
+├─ evaluate_model.exe       성능 평가
+├─ _internal/               세 exe 가 공유하는 런타임 (삭제 금지)
+├─ features.json            설정
+├─ request_model.pkl        학습된 모델
+├─ request_vectorizer.pkl   학습된 벡터라이저
+├─ model_meta.json          학습 시점 정보
+├─ train_20260527.csv       학습 데이터
+├─ sample_input.csv         동작 확인용 예시
+└─ 사용설명서.txt
+```
+
+## 사용 방법
+
+### exe 로 실행 (Java · 파이썬 불필요)
+
+```bat
+batch_predict.exe                            :: features.json 설정값으로 실행
+batch_predict.exe -i mydata.csv -o out.csv   :: 입출력 파일 지정
+batch_predict.exe --show                     :: 결과 미리보기
+batch_predict.exe --encoding cp949           :: 인코딩 강제 지정
+batch_predict.exe --no-pause                 :: 스케줄러용 (대기 없이 종료)
+
+train_model.exe                              :: 재학습
+evaluate_model.exe                           :: 성능 평가
+```
+
+### 파이썬 소스로 실행
+
+```bash
+pip install -r requirements.txt   # Java 설치 불필요
+
+python batch_predict.py
+python train_model.py
+python evaluate_model.py
+```
+
+### exe 직접 빌드 (Windows 에서만)
+
+PyInstaller 는 크로스 컴파일을 지원하지 않으므로 Windows `.exe` 는 Windows 에서만
+빌드할 수 있습니다.
+
+```bat
+pip install -r requirements-build.txt
+pyinstaller --noconfirm --clean MoneyCustomer.spec
+```
+
+결과물은 `dist/MoneyCustomer/` 에 생성됩니다.
+저장소의 **Actions → Release** 워크플로가 `windows-latest` 러너에서 같은 명령으로
+빌드하고, Java 가 없는 상태에서 스모크 테스트까지 수행한 뒤 릴리스에 첨부합니다.
 
 ## 파일 구성
 
 | 파일 | 설명 |
 |---|---|
-| `batch_predict.py` | 배치 추론 모듈 (CSV 입력 → 분류 결과 CSV 출력) |
-| `train_model.py` | 모델 학습 모듈 |
-| `evaluate_model.py` | 모델 성능 평가 도구 |
-| `features.json` | 컬럼·임계값·파일명 등 전체 설정 |
-| `request_model.pkl` | 학습된 LightGBM 분류 모델 |
-| `request_vectorizer.pkl` | 학습된 TF-IDF 벡터라이저 |
-| `train_20260527.csv` | 학습 데이터 (CP949 인코딩) |
+| `batch_predict.py` | 배치 추론 |
+| `train_model.py` | 학습 |
+| `evaluate_model.py` | 성능 평가 |
+| `korean_tokenizer.py` | **Java 없는 한국어 토크나이저** (`kiwi` / `regex` 백엔드) |
+| `common.py` | 세 모듈이 공유하는 설정 · 인코딩 · CLI 유틸리티 |
+| `mc_entry.py` | exe 번들 공용 진입점 (실행 파일 이름으로 명령 분기) |
+| `MoneyCustomer.spec` | PyInstaller 빌드 스펙 |
+| `features.json` | 컬럼 · threshold · 토크나이저 · 모델 하이퍼파라미터 설정 |
+| `train_20260527.csv` | 학습 데이터 20,000행 (CP949) |
+| `sample_input.csv` | 동작 확인용 예시 12행 |
 | `사용설명서.txt` | 상세 사용 설명서 |
-| `evaluate result.txt` | v1.8 성능 평가 실행 결과 |
-| `Text_Classification_v1.8.pptx` | 프로젝트 설명 자료 |
-
-## 사전 준비
-
-v1.8은 KoNLPy 의 `Okt` 형태소 분석기를 사용하므로 **Java 런타임(JDK/JRE)이 반드시 설치**되어
-있어야 하며, 경우에 따라 `JAVA_HOME` 환경 변수 설정이 필요합니다.
-
-```bat
-pip install pandas scikit-learn lightgbm joblib konlpy
-```
-
-## 사용 방법
-
-```bat
-python batch_predict.py                          :: features.json 설정값으로 실행
-python batch_predict.py -i mydata.csv -o out.csv :: 입출력 파일 직접 지정
-python batch_predict.py --show                   :: 결과 미리보기 출력
-python batch_predict.py --encoding cp949         :: 한글 깨질 때 인코딩 지정
-
-python train_model.py                            :: 재학습
-python evaluate_model.py                         :: 성능 평가
-```
-
-자세한 내용은 [`사용설명서.txt`](사용설명서.txt) 를 참고하세요.
 
 ## 분류 기준
 
@@ -60,8 +116,18 @@ python evaluate_model.py                         :: 성능 평가
 
 클래스 1·2·3 중 하나라도 확률이 `threshold`(기본 0.5) 이상이면 **주요작업**으로 판정합니다.
 
-## 알려진 이슈 (v1.8.0)
+## 토크나이저 설정
 
-- `evaluate_model.py` 의 3개 라인에 오타가 있어 실행 시 `NameError` 가 발생합니다
-  (`file_//config`, `csv_//file_name`, `y_//true`). 다음 릴리스에서 수정됩니다.
-- Java 가 설치되지 않은 환경에서는 KoNLPy 초기화에 실패하여 실행할 수 없습니다.
+`features.json` 의 `tokenizer.backend` 로 선택합니다. **두 백엔드 모두 Java 를 요구하지 않습니다.**
+
+| backend | 구현 | 정확도 | 비고 |
+|---|---|---|---|
+| `kiwi` (기본) | `kiwipiepy` (C++) | 높음 | 권장 |
+| `regex` | 순수 파이썬 규칙 기반 | 낮음 | 외부 의존성이 전혀 없는 대체 수단 |
+
+토크나이저 설정을 바꾸면 **반드시 `train_model` 로 재학습**해야 합니다.
+학습 설정은 `model_meta.json` 에 기록되며, 추론 시 설정이 다르면 경고가 출력됩니다.
+
+## 라이선스 / 문의
+
+문제 발생 시 입력 CSV, 출력 CSV, 화면에 출력된 오류 메시지를 함께 첨부해 문의하세요.

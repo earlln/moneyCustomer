@@ -1,6 +1,6 @@
 {
   "project_name": "금전 대고객 작업 분류",
-  "version": "1.7",
+  "version": "2.0.0",
   "input_columns": ["작업의뢰명", "작업의뢰내용", "시스템명"],
   "target_column": "금전대고객구분",
   "threshold": 0.5,
@@ -12,6 +12,26 @@
   },
   "major_classes": [1, 2, 3],
   "description": "class 0=비주요작업, 1=금전작업, 2=대고객작업, 3=둘다. major_classes 중 하나라도 threshold 이상이면 주요작업.",
+  "tokenizer": {
+    "backend": "kiwi",
+    "pos_tags": ["NNG", "NNP", "NNB", "SL", "SH", "XR"],
+    "min_length": 2,
+    "keep_latin": true,
+    "_comment": "backend: kiwi(권장, kiwipiepy 필요) 또는 regex(의존성 없음, 정확도 낮음). 어느 쪽도 Java 를 요구하지 않습니다. 이 값을 바꾸면 train_model 로 반드시 재학습해야 합니다."
+  },
+  "vectorizer": {
+    "max_features": 15000,
+    "ngram_range": [1, 2],
+    "min_df": 1,
+    "sublinear_tf": false
+  },
+  "model_params": {
+    "n_estimators": 500,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "class_weight": "balanced",
+    "random_state": 42
+  },
   "files": {
     "train_data": "train_20260527.csv",
     "input": "input_20260527.csv",

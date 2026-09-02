@@ -1,0 +1,45 @@
+{
+  "app_version": "2.0.0",
+  "trained_at": "2026-09-02T09:26:29",
+  "tokenizer": {
+    "backend": "kiwi",
+    "pos_tags": [
+      "NNB",
+      "NNG",
+      "NNP",
+      "SH",
+      "SL",
+      "XR"
+    ],
+    "min_length": 2,
+    "keep_latin": true,
+    "kiwipiepy_version": "0.23.2"
+  },
+  "input_columns": [
+    "작업의뢰명",
+    "작업의뢰내용",
+    "시스템명"
+  ],
+  "target_column": "금전대고객구분",
+  "train_data": "train_20260527.csv",
+  "n_rows": 20000,
+  "n_features": 15000,
+  "classes": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "metrics": {
+    "holdout_accuracy": 0.8975,
+    "train_accuracy": 0.99675,
+    "test_size": 0.2
+  },
+  "library_versions": {
+    "python": "3.11.15",
+    "scikit-learn": "1.9.0",
+    "lightgbm": "4.7.0",
+    "pandas": "3.0.5",
+    "kiwipiepy": "0.23.2"
+  }
+}
