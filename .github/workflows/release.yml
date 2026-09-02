@@ -7,13 +7,22 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
+      action:
+        description: '수행할 작업'
+        required: true
+        type: choice
+        options:
+          - release
+          - delete
+        default: release
       tag:
-        description: '릴리스 태그 (예: v2.0.0)'
+        description: '릴리스 태그 (예: v2.1.0)'
         required: true
         type: string
       ref:
-        description: '릴리스 대상 커밋 SHA 또는 브랜치'
-        required: true
+        description: '릴리스 대상 커밋 SHA 또는 브랜치 (delete 시에는 무시됨)'
+        required: false
+        default: ''
         type: string
       build_windows_exe:
         description: 'Windows exe 를 빌드해 릴리스에 첨부'
@@ -42,7 +51,7 @@ env:
 
 jobs:
   build-windows-exe:
-    if: ${{ inputs.build_windows_exe }}
+    if: ${{ inputs.action == 'release' && inputs.build_windows_exe }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -249,7 +258,7 @@ jobs:
   release:
     needs: [build-windows-exe]
     # exe 빌드를 건너뛴 경우(소스 전용 릴리스)에도 실행되어야 한다.
-    if: ${{ always() && (needs.build-windows-exe.result == 'success' || needs.build-windows-exe.result == 'skipped') }}
+    if: ${{ always() && inputs.action == 'release' && (needs.build-windows-exe.result == 'success' || needs.build-windows-exe.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       # 릴리스 노트는 항상 워크플로가 실행된 브랜치 최신 상태에서 읽는다.
@@ -275,6 +284,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          # ref 를 비워두고 실행한 경우 워크플로가 돌고 있는 커밋을 대상으로 삼는다.
+          if [ -z "$TARGET" ]; then
+            TARGET="$GITHUB_SHA"
+            echo "ref 가 비어 있어 현재 커밋을 대상으로 사용합니다: $TARGET"
+          fi
 
           # 태그가 가리키는 커밋을 옮겨야 할 때는 릴리스와 태그를 함께 지운다.
           # 태그는 그대로 둔 채 자산만 교체하면, 태그의 소스와 첨부된 exe 가
@@ -311,3 +326,36 @@ jobs:
           fi
 
           gh release view "$TAG"
+
+  delete-release:
+    # 릴리스를 목록에서 내릴 때 사용한다. 태그도 함께 지워 릴리스 없는
+    # 태그가 남지 않도록 한다. 릴리스 노트 문서는 저장소에 그대로 보존된다.
+    if: ${{ inputs.action == 'delete' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 릴리스 및 태그 삭제
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "릴리스 $TAG 가 존재하지 않습니다. 태그만 정리합니다."
+            gh api -X DELETE "repos/$GH_REPO/git/refs/tags/$TAG" 2>/dev/null \
+              && echo "태그 $TAG 삭제됨" || echo "태그 $TAG 도 없습니다. 할 일이 없습니다."
+            exit 0
+          fi
+
+          echo "삭제 전 상태:"
+          gh release view "$TAG" --json tagName,publishedAt,assets \
+            --jq '"  태그: \(.tagName)\n  게시: \(.publishedAt)\n  자산: \([.assets[] | "\(.name) (다운로드 \(.downloadCount)회)"] | join(", "))"'
+
+          gh release delete "$TAG" --yes --cleanup-tag
+          echo "릴리스와 태그 $TAG 를 삭제했습니다."
+
+          echo ""
+          echo "남은 릴리스:"
+          gh release list --limit 20
