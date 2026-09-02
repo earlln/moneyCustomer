@@ -25,6 +25,11 @@ on:
         required: false
         type: boolean
         default: false
+      recreate:
+        description: '같은 태그의 기존 릴리스·태그를 지우고 다시 만들기'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -266,9 +271,18 @@ jobs:
           TAG: ${{ inputs.tag }}
           TARGET: ${{ inputs.ref }}
           PRERELEASE: ${{ inputs.prerelease }}
+          RECREATE: ${{ inputs.recreate }}
         shell: bash
         run: |
           set -euo pipefail
+
+          # 태그가 가리키는 커밋을 옮겨야 할 때는 릴리스와 태그를 함께 지운다.
+          # 태그는 그대로 둔 채 자산만 교체하면, 태그의 소스와 첨부된 exe 가
+          # 서로 다른 커밋에서 나오는 상태가 되기 때문이다.
+          if [ "$RECREATE" = "true" ] && gh release view "$TAG" >/dev/null 2>&1; then
+            echo "기존 릴리스와 태그를 삭제합니다: $TAG"
+            gh release delete "$TAG" --yes --cleanup-tag
+          fi
 
           notes="docs/release-notes/${TAG}.md"
           args=(release create "$TAG" --target "$TARGET" --title "$TAG")
