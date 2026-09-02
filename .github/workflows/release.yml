@@ -61,7 +61,15 @@ jobs:
         # JAVA_HOME 을 지우고 빌드/테스트해 Java 의존성이 남아있지 않음을 보장한다.
         run: |
           echo "JAVA_HOME=" >> "$GITHUB_ENV"
-          python -c "import importlib.util as u; assert u.find_spec('konlpy') is None, 'konlpy(Java 의존)가 설치되어 있습니다'; print('konlpy 미설치 확인')"
+          # 아래 python 은 러너의 빌드용 파이썬이다. exe 실행과 달리 여기서는
+          # 출력 인코딩을 명시해 준다 (러너 콘솔이 cp1252 인 영문 Windows).
+          PYTHONIOENCODING=utf-8 python -c "import importlib.util as u; assert u.find_spec('konlpy') is None, 'konlpy(Java 의존)가 설치되어 있습니다'; print('konlpy 미설치 확인')"
+
+      - name: 로직 단위 테스트
+        shell: bash
+        # 모델·대용량 데이터 없이 판정 로직만 빠르게 확인한다.
+        # exe 로 묶기 전에 돌려, 깨진 로직이 릴리스로 넘어가지 않도록 한다.
+        run: PYTHONIOENCODING=utf-8 python tests/test_logic.py
 
       - name: exe 빌드 (PyInstaller)
         shell: bash
@@ -150,7 +158,7 @@ jobs:
           run_standalone "$target/evaluate_model.exe" -d sample_input.csv --no-pause
 
           echo "----- train_model.exe (축소 데이터로 재학습) -----"
-          python - "$target" <<'PY'
+          PYTHONIOENCODING=utf-8 python - "$target" <<'PY'
           import csv, json, os, sys
           target = sys.argv[1]
           with open(os.path.join(target, 'train_20260527.csv'), encoding='cp949', newline='') as f:
@@ -168,7 +176,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - "/c/mc_standalone/${PACKAGE_NAME}" <<'PY'
+          # 검증 스크립트도 러너 파이썬으로 돌므로 출력 인코딩을 명시한다.
+          # exe 실행 자체는 위 스텝에서 이 변수 없이 검증했다.
+          PYTHONIOENCODING=utf-8 python - "/c/mc_standalone/${PACKAGE_NAME}" <<'PY'
           import csv, json, os, sys
 
           target = sys.argv[1]

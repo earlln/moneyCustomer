@@ -117,6 +117,23 @@ def main(argv=None):
         log(f"      [알림] 토큰이 하나도 남지 않은 행 {empty:,}건")
 
     y = df[target_column]
+    if not 0.0 < args.test_size < 1.0:
+        raise ValueError(f"--test-size 는 0 과 1 사이여야 합니다: {args.test_size}")
+
+    # stratify 분할은 클래스마다 최소 2건이 필요하다. 미리 확인해 sklearn 의
+    # 난해한 예외 대신 원인을 짚어 주는 메시지를 낸다.
+    counts = y.value_counts()
+    too_few = counts[counts < 2]
+    if len(too_few):
+        raise ValueError(
+            "학습 데이터가 너무 적은 클래스가 있어 분할할 수 없습니다.\n"
+            + "\n".join(f"  클래스 {c}: {n}건 (최소 2건 필요)" for c, n in too_few.items())
+        )
+    if len(counts) < 2:
+        raise ValueError(
+            f"정답 컬럼 '{target_column}' 에 클래스가 하나뿐입니다. 분류 학습을 할 수 없습니다."
+        )
+
     X_train, X_test, y_train, y_test = train_test_split(
         texts, y, test_size=args.test_size, random_state=42, stratify=y
     )
@@ -161,6 +178,8 @@ def main(argv=None):
             "input_columns": list(input_columns),
             "target_column": target_column,
             "train_data": os.path.basename(csv_path),
+            # evaluate_model 이 동일한 분할을 재현해도 되는지 판단하는 근거
+            "train_data_fingerprint": common.data_fingerprint(csv_path),
             "n_rows": int(len(df)),
             "n_features": int(X_train_tfidf.shape[1]),
             "classes": [int(c) for c in model.classes_],

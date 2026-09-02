@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -100,6 +101,38 @@ def combine_columns(df, input_columns, log=print):
         )
     block = df[present]
     return block.where(block.notna(), "").astype(str).agg(" ".join, axis=1).tolist()
+
+
+def data_fingerprint(path: str) -> dict:
+    """CSV 파일의 지문(크기 + SHA-256).
+
+    evaluate_model 은 학습 때와 동일한 분할을 재현해 검증 구간을 골라낸다.
+    파일이 한 줄이라도 바뀌면 그 재현은 성립하지 않으므로, 학습 시점의 지문을
+    남겨 두고 평가 시 비교한다. 지문이 다르면 "검증 구간" 이라고 부를 수 없다.
+    """
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    return {"sha256": digest.hexdigest(), "bytes": os.path.getsize(path)}
+
+
+def resolve_classes(config: dict, model) -> list:
+    """출력할 클래스 번호 목록을 결정한다.
+
+    features.json 의 class_labels 를 우선하되, 모델이 실제로 알고 있는 클래스가
+    설정에 빠져 있으면 함께 포함한다. 클래스 수를 3개나 5개로 바꿔도 확률 컬럼
+    구성이 따라가도록 하기 위함이다.
+    """
+    labels = (config or {}).get("class_labels") or {}
+    classes = set()
+    for key in labels:
+        try:
+            classes.add(int(key))
+        except (TypeError, ValueError):
+            continue
+    classes.update(int(c) for c in getattr(model, "classes_", []))
+    return sorted(classes)
 
 
 def save_meta(meta: dict, filename: str = META_FILENAME) -> str:

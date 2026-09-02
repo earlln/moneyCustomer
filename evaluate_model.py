@@ -53,7 +53,12 @@ def main(argv=None):
         action="store_true",
         help="학습에 쓰지 않은 검증 구간만 평가 (전체 데이터 평가 생략)",
     )
-    parser.add_argument("--test-size", type=float, default=0.2, help="검증 구간 비율 (학습 때와 동일해야 함, 기본 0.2)")
+    parser.add_argument(
+        "--test-size",
+        type=float,
+        default=None,
+        help="검증 구간 비율 (기본: model_meta.json 에 기록된 학습 시 값)",
+    )
     parser.add_argument("--no-pause", action="store_true", help="종료 시 Enter 대기 생략")
     args = parser.parse_args(argv)
 
@@ -116,13 +121,37 @@ def main(argv=None):
     y_true = df[target_column].to_numpy()
     y_pred = model.predict(vectorizer.transform(texts))
 
-    is_training_data = bool(meta) and meta.get("train_data") == os.path.basename(csv_path)
+    # 학습에 쓴 파일과 동일한 파일일 때만 분할을 재현할 수 있다.
+    # 파일명이 같아도 내용이 한 줄이라도 바뀌었다면 재현은 성립하지 않으므로
+    # 학습 시점에 남겨 둔 지문(크기 + SHA-256)까지 대조한다.
+    can_reproduce_split = False
+    if meta and meta.get("train_data") == os.path.basename(csv_path):
+        recorded = meta.get("train_data_fingerprint")
+        if not recorded:
+            log("")
+            log("[알림] 학습 시점의 데이터 지문이 기록되어 있지 않아(구버전 모델)")
+            log("       검증 구간을 신뢰할 수 없습니다. 전체 데이터 기준으로만 평가합니다.")
+        elif common.data_fingerprint(csv_path) != recorded:
+            log("")
+            log("[경고] 평가 파일의 내용이 학습 시점과 다릅니다.")
+            log("       학습 때와 동일한 분할을 재현할 수 없으므로 '검증 구간' 수치를")
+            log("       계산하지 않습니다. 정확한 성능을 보려면 train_model 로 재학습하거나,")
+            log("       학습에 쓰지 않은 별도 데이터를 -d 옵션으로 지정하세요.")
+        else:
+            can_reproduce_split = True
 
-    if is_training_data:
+    if can_reproduce_split:
+        # 학습 때와 동일한 비율이어야 같은 분할이 재현된다.
+        test_size = args.test_size
+        if test_size is None:
+            test_size = (meta.get("metrics") or {}).get("test_size", 0.2)
+        elif test_size != (meta.get("metrics") or {}).get("test_size", test_size):
+            log(f"[경고] 지정한 --test-size({test_size}) 가 학습 시 값과 달라 분할이 어긋납니다.")
+
         # train_model.py 와 동일한 분할을 재현해 학습에 쓰이지 않은 구간을 골라낸다.
         indices = np.arange(len(df))
         _, holdout_idx = train_test_split(
-            indices, test_size=args.test_size, random_state=42, stratify=y_true
+            indices, test_size=test_size, random_state=42, stratify=y_true
         )
         evaluate(
             y_true[holdout_idx],
@@ -138,6 +167,9 @@ def main(argv=None):
             log("[해석] 위 '전체 데이터' 수치는 모델이 학습에 사용한 행을 포함하므로")
             log("       실제 성능보다 높게 나옵니다. 반드시 '검증 구간' 정확도를 기준으로")
             log("       모델 성능을 판단하세요.")
+    elif meta and meta.get("train_data") == os.path.basename(csv_path):
+        # 학습에 쓴 파일이지만 분할을 재현할 수 없는 경우
+        evaluate(y_true, y_pred, "전체 데이터 평가 - 학습 데이터 포함 가능(과대평가 주의)", log)
     else:
         evaluate(y_true, y_pred, "평가 결과 (학습에 사용되지 않은 외부 데이터)", log)
 

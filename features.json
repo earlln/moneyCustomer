@@ -1,7 +1,11 @@
 {
   "project_name": "금전 대고객 작업 분류",
   "version": "2.0.0",
-  "input_columns": ["작업의뢰명", "작업의뢰내용", "시스템명"],
+  "input_columns": [
+    "작업의뢰명",
+    "작업의뢰내용",
+    "시스템명"
+  ],
   "target_column": "금전대고객구분",
   "threshold": 0.5,
   "class_labels": {
@@ -10,18 +14,36 @@
     "2": "대고객작업",
     "3": "금전+대고객"
   },
-  "major_classes": [1, 2, 3],
+  "major_classes": [
+    1,
+    2,
+    3
+  ],
+  "major_rule": "any",
+  "major_rule_comment": "주요작업 판정 규칙. any = major_classes 중 하나라도 확률이 threshold 이상 (v1.8 호환, 기본값). sum = major_classes 확률의 합이 threshold 이상 (주요작업 = 비주요작업이 아님 이므로 확률적으로는 이쪽이 정확). 두 규칙의 판정이 갈리는 건수는 실행 시 안내합니다.",
+  "blank_row_policy": "trailing",
+  "blank_row_policy_comment": "입력 CSV 의 빈 행 처리. trailing = 파일 끝의 빈 행만 제외하고 중간의 빈 행은 경고 후 그대로 처리(기본값). stop_at_first = 첫 빈 행에서 처리 중단(v1.8 호환, 중간에 빈 행이 있으면 이후 데이터가 모두 누락되므로 권장하지 않음).",
   "description": "class 0=비주요작업, 1=금전작업, 2=대고객작업, 3=둘다. major_classes 중 하나라도 threshold 이상이면 주요작업.",
   "tokenizer": {
     "backend": "kiwi",
-    "pos_tags": ["NNG", "NNP", "NNB", "SL", "SH", "XR"],
+    "pos_tags": [
+      "NNG",
+      "NNP",
+      "NNB",
+      "SL",
+      "SH",
+      "XR"
+    ],
     "min_length": 2,
     "keep_latin": true,
     "_comment": "backend: kiwi(권장, kiwipiepy 필요) 또는 regex(의존성 없음, 정확도 낮음). 어느 쪽도 Java 를 요구하지 않습니다. 이 값을 바꾸면 train_model 로 반드시 재학습해야 합니다."
   },
   "vectorizer": {
     "max_features": 15000,
-    "ngram_range": [1, 2],
+    "ngram_range": [
+      1,
+      2
+    ],
     "min_df": 1,
     "sublinear_tf": false
   },

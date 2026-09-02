@@ -1,6 +1,6 @@
 {
   "app_version": "2.0.0",
-  "trained_at": "2026-09-02T09:26:29",
+  "trained_at": "2026-09-02T09:54:56",
   "tokenizer": {
     "backend": "kiwi",
     "pos_tags": [
@@ -22,6 +22,10 @@
   ],
   "target_column": "금전대고객구분",
   "train_data": "train_20260527.csv",
+  "train_data_fingerprint": {
+    "sha256": "5382bd58a9e5ffc0eba6c5921361229c12b0ab083e746f302fc1c427f62706ca",
+    "bytes": 3261204
+  },
   "n_rows": 20000,
   "n_features": 15000,
   "classes": [

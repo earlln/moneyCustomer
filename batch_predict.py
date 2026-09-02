@@ -1,6 +1,6 @@
 """금전 대고객 작업 분류 - 배치 추론 모듈 (v2.0.0)
 
-CSV 를 읽어 각 행을 4개 클래스로 분류하고 결과 CSV 를 저장합니다.
+CSV 를 읽어 각 행을 분류하고 결과 CSV 를 저장합니다.
 v1.8 과 달리 Java(JVM)가 필요 없습니다.
 """
 
@@ -22,11 +22,7 @@ import lightgbm  # noqa: F401
 import common
 from korean_tokenizer import from_config
 
-ALL_CLASSES = (0, 1, 2, 3)
-RESULT_COLUMNS = (
-    "prediction", "label", "prob_0", "prob_1", "prob_2", "prob_3",
-    "is_major", "major_label",
-)
+BASE_RESULT_COLUMNS = ("prediction", "label", "prob_major", "is_major", "major_label")
 
 
 def load_artifacts(config):
@@ -43,54 +39,103 @@ def load_artifacts(config):
 
 
 def predict_batch(vectorizer, model, config, texts):
-    """토큰화된 문서 리스트를 받아 행별 예측 결과 딕셔너리 리스트를 반환한다."""
+    """토큰화된 문서 리스트를 받아 행별 예측 결과를 반환한다.
+
+    ``is_major`` 판정 규칙은 features.json 의 ``major_rule`` 로 정한다.
+
+    - ``"any"``  : major_classes 중 하나라도 확률이 threshold 이상 (v1.8 호환, 기본)
+    - ``"sum"``  : major_classes 확률의 **합**이 threshold 이상
+
+    "주요작업" 은 곧 "비주요작업(0)이 아님" 이므로 확률적으로 옳은 쪽은 ``sum``
+    이다. 예를 들어 확률이 (0.40, 0.25, 0.20, 0.15) 이면 주요작업일 확률이 0.60
+    인데도 ``any`` 규칙은 비주요작업으로 판정한다. 다만 기존 집계와의 연속성을
+    위해 기본값은 v1.8 과 같은 ``any`` 로 두고, 두 규칙의 판정이 갈리는 건수를
+    실행 시 알려 준다.
+    """
     X = vectorizer.transform(texts)
     predictions = model.predict(X)
     probabilities = model.predict_proba(X)
 
     model_classes = [int(c) for c in model.classes_]
+    all_classes = common.resolve_classes(config, model)
     threshold = config.get("threshold", 0.5)
-    major_classes = config.get("major_classes", [1, 2, 3])
+    major_classes = [int(c) for c in config.get("major_classes", [1, 2, 3])]
     class_labels = config.get("class_labels", {})
+    rule = str(config.get("major_rule", "any")).lower()
+    if rule not in ("any", "sum"):
+        raise ValueError(
+            f"features.json 의 major_rule 값이 잘못되었습니다: {rule!r} (any 또는 sum)"
+        )
 
-    results = []
+    results, disagreements = [], 0
     for i in range(len(texts)):
         # 학습 데이터에 없던 클래스는 확률 0 으로 채워 컬럼 구성을 항상 동일하게 유지한다.
         prob_by_class = dict(zip(model_classes, (float(p) for p in probabilities[i])))
-        probs = {c: prob_by_class.get(c, 0.0) for c in ALL_CLASSES}
+        probs = {c: prob_by_class.get(c, 0.0) for c in all_classes}
+        prob_major = sum(probs.get(c, 0.0) for c in major_classes)
+
+        any_major = any(probs.get(c, 0.0) >= threshold for c in major_classes)
+        sum_major = prob_major >= threshold
+        if any_major != sum_major:
+            disagreements += 1
+        is_major = sum_major if rule == "sum" else any_major
+
         pred = int(predictions[i])
-        is_major = any(probs.get(c, 0.0) >= threshold for c in major_classes)
-        results.append(
-            {
-                "prediction": pred,
-                "label": class_labels.get(str(pred), f"Unknown_{pred}"),
-                "prob_0": probs[0],
-                "prob_1": probs[1],
-                "prob_2": probs[2],
-                "prob_3": probs[3],
-                "is_major": is_major,
-                "major_label": "주요작업" if is_major else "비주요작업",
-            }
-        )
-    return results
+        row = {
+            "prediction": pred,
+            "label": class_labels.get(str(pred), f"Unknown_{pred}"),
+            "prob_major": prob_major,
+            "is_major": is_major,
+            "major_label": "주요작업" if is_major else "비주요작업",
+        }
+        row.update({f"prob_{c}": probs[c] for c in all_classes})
+        results.append(row)
+
+    return results, all_classes, disagreements
 
 
-def truncate_at_blank(df, input_columns, log=print):
-    """첫 입력 컬럼이 비어 있는 행부터 잘라낸다 (v1.8 과 동일한 동작).
+def trim_blank_rows(df, input_columns, policy="trailing", log=print):
+    """입력 CSV 의 빈 행을 처리한다.
 
-    엑셀에서 저장한 CSV 뒤쪽에 붙는 빈 행을 처리하지 않기 위한 규칙이다.
+    엑셀에서 저장한 CSV 는 끝에 빈 행이 붙는 경우가 많아 이를 걸러내야 한다.
+    다만 v1.8 은 **첫 입력 컬럼이 빈 첫 행에서 무조건 처리를 중단**했기 때문에,
+    파일 중간에 제목이 비어 있는 행이 하나만 있어도 그 뒤 데이터 전체가 조용히
+    누락됐다. 기본 정책 ``"trailing"`` 은 파일 **끝**의 빈 행만 제거하고,
+    중간의 빈 행은 건너뛰지 않은 채 경고만 남긴다.
+
+    ``policy="stop_at_first"`` 로 두면 v1.8 과 동일하게 동작한다.
     """
-    if not input_columns:
+    present = [c for c in input_columns if c in df.columns]
+    if not present or df.empty:
         return df
-    first = input_columns[0]
-    if first not in df.columns:
-        return df
-    blank = (df[first].isna() | (df[first].astype(str).str.strip() == "")).to_numpy()
+
+    block = df[present]
+    is_blank = (block.isna() | (block.astype(str).apply(lambda col: col.str.strip()) == "")).all(axis=1)
+    blank = is_blank.to_numpy()
     if not blank.any():
         return df
-    stop = int(blank.argmax())  # 첫 번째 빈 행의 위치
-    log(f"[알림] {stop}행의 '{first}' 값이 비어 있어 이 지점부터 처리를 중단합니다.")
-    return df.iloc[:stop]
+
+    if policy == "stop_at_first":
+        stop = int(blank.argmax())
+        log(f"[알림] {stop}행이 비어 있어 여기서 처리를 중단합니다 (v1.8 호환 정책).")
+        return df.iloc[:stop]
+
+    trailing = 0
+    for value in blank[::-1]:
+        if not value:
+            break
+        trailing += 1
+
+    interior = int(blank[: len(blank) - trailing].sum())
+    if interior:
+        log(
+            f"[경고] 입력값이 모두 비어 있는 행이 파일 중간에 {interior:,}건 있습니다.\n"
+            "       건너뛰지 않고 그대로 예측하므로 해당 행의 결과는 신뢰할 수 없습니다."
+        )
+    if trailing:
+        log(f"[알림] 파일 끝의 빈 행 {trailing:,}건을 제외했습니다.")
+        return df.iloc[: len(df) - trailing]
+    return df
 
 
 def main(argv=None):
@@ -127,16 +172,24 @@ def main(argv=None):
     print(f"      {len(df):,}행 로드 (인코딩: {used_encoding})")
 
     input_columns = config.get("input_columns", [])
-    df = truncate_at_blank(df, input_columns)
+    df = trim_blank_rows(df, input_columns, config.get("blank_row_policy", "trailing"))
     if df.empty:
         raise ValueError("처리할 데이터가 없습니다. 입력 CSV 를 확인하세요.")
 
     print("[3/4] 전처리 및 예측 중...")
     texts = tokenizer.transform_many(common.combine_columns(df, input_columns))
-    results = predict_batch(vectorizer, model, config, texts)
+    empty = sum(1 for t in texts if not t.strip())
+    if empty:
+        print(
+            f"      [경고] 분석할 단어가 하나도 남지 않은 행이 {empty:,}건 있습니다.\n"
+            "             해당 행의 예측은 근거가 없으므로 결과를 확인하세요."
+        )
+
+    results, all_classes, disagreements = predict_batch(vectorizer, model, config, texts)
 
     df = df.copy()
-    for key in RESULT_COLUMNS:
+    columns = list(BASE_RESULT_COLUMNS) + [f"prob_{c}" for c in all_classes]
+    for key in columns:
         df[key] = [r[key] for r in results]
 
     print(f"[4/4] 결과 저장: {output_file}")
@@ -150,15 +203,25 @@ def main(argv=None):
     print(f" 총 건수   : {len(df):,}")
     print(f" 주요작업  : {major:,}건")
     print(f" 비주요작업: {len(df) - major:,}건")
+
     print("\n[클래스별 건수]")
     labels = config.get("class_labels", {})
-    counts = df["prediction"].value_counts().sort_index()
-    for cls, count in counts.items():
-        print(f"  {cls} {labels.get(str(int(cls)), ''):<12} {count:>7,}건")
+    counts = df["prediction"].value_counts()
+    for cls in all_classes:
+        print(f"  {cls} {labels.get(str(cls), ''):<12} {int(counts.get(cls, 0)):>7,}건")
+
+    if disagreements:
+        rule = str(config.get("major_rule", "any")).lower()
+        print(
+            f"\n[참고] 주요작업 판정 규칙(any/sum)에 따라 결과가 달라지는 행이 {disagreements:,}건 있습니다.\n"
+            f"       현재 규칙은 '{rule}' 입니다. prob_major 컬럼(주요작업 확률의 합)을 함께\n"
+            "       확인하시고, 필요하면 features.json 의 major_rule 을 조정하세요."
+        )
 
     if args.show or len(df) <= 10:
         print("\n[결과 미리보기]")
-        cols = [c for c in ("label", "major_label", "prob_0", "prob_1", "prob_2", "prob_3") if c in df.columns]
+        preview = ["label", "major_label", "prob_major"] + [f"prob_{c}" for c in all_classes]
+        cols = [c for c in preview if c in df.columns]
         with pd.option_context("display.width", 200):
             print(df[cols].head(10).to_string())
     return 0

@@ -119,6 +119,7 @@ pyinstaller --noconfirm --clean MoneyCustomer.spec
 | `train_model.py` | 학습 |
 | `evaluate_model.py` | 성능 평가 |
 | `korean_tokenizer.py` | **Java 없는 한국어 토크나이저** (`kiwi` / `regex` 백엔드) |
+| `tests/test_logic.py` | 판정 로직 단위 테스트 (`python tests/test_logic.py`) |
 | `common.py` | 세 모듈이 공유하는 설정 · 인코딩 · CLI 유틸리티 |
 | `mc_entry.py` | exe 번들 공용 진입점 (실행 파일 이름으로 명령 분기) |
 | `MoneyCustomer.spec` | PyInstaller 빌드 스펙 |
@@ -137,6 +138,32 @@ pyinstaller --noconfirm --clean MoneyCustomer.spec
 | 3 | 금전+대고객 |
 
 클래스 1·2·3 중 하나라도 확률이 `threshold`(기본 0.5) 이상이면 **주요작업**으로 판정합니다.
+
+## 출력 컬럼
+
+| 컬럼 | 설명 |
+|---|---|
+| `prediction` | 예측 클래스 번호 |
+| `label` | 예측된 분류명 |
+| `prob_0` ~ `prob_3` | 클래스별 확률 (`class_labels` 에 맞춰 자동 구성) |
+| `prob_major` | **주요작업일 확률의 합** (v2.0.0 신규) |
+| `is_major` | 주요작업 여부 (`major_rule` 기준) |
+| `major_label` | 주요작업 / 비주요작업 |
+
+## 주요 설정 (`features.json`)
+
+| 키 | 기본값 | 설명 |
+|---|---|---|
+| `threshold` | `0.5` | 주요작업 판정 확률 기준 |
+| `major_rule` | `"any"` | `any` = 개별 확률 중 하나라도 threshold 이상 (v1.8 호환)<br>`sum` = 주요 클래스 확률의 **합**이 threshold 이상 (확률적으로 정확) |
+| `blank_row_policy` | `"trailing"` | `trailing` = 파일 **끝**의 빈 행만 제외<br>`stop_at_first` = 첫 빈 행에서 중단 (v1.8 호환, 데이터 누락 위험) |
+| `tokenizer.backend` | `"kiwi"` | `kiwi` / `regex` — 둘 다 Java 불필요 |
+| `vectorizer` | 15,000 · 1~2gram | TF-IDF 설정 |
+| `model_params` | — | LightGBM 하이퍼파라미터 |
+
+`major_rule` 을 `sum` 으로 바꾸면 재학습 없이 즉시 반영됩니다. 학습 데이터 20,000행에서
+두 규칙의 판정이 갈리는 행은 94건(0.47%)이며, 그중 `sum` 이 맞은 경우가 63건이었습니다.
+`tokenizer` 설정을 바꾼 경우에만 재학습이 필요합니다.
 
 ## 토크나이저 설정
 
