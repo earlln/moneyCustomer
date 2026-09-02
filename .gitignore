@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# PyInstaller
+build/
+dist/
+
+# Runtime outputs
+train_log.txt
+evaluation_report.txt
+output*.csv

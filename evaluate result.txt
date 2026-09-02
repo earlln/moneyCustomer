@@ -1,0 +1,34 @@
+C:\Users\Uxxxxxxx\Documents\opencode\IT지원센터 사업과제\금전 대고객 작업 분류_v1.8_고성능>python evaluate_model.py
+==================================================
+ 금전 대고객 작업 분류 - 모델 성능 평가 도구
+==================================================
+
+평가 데이터 읽기: C:\Users\Uxxxxxxx\Documents\opencode\IT지원센터 사업과제\금전 대고객 작업 분류_v1.8_고성능\train_20260527.csv
+데이터 전처리 및 예측 수행 중...
+C:\Users\Uxxxxxxx\AppData\Local\Programs\Python\Python313\Lib\site-packages\sklearn\utils\validation.py:2749: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+
+==============================
+ 최종 정확도: 0.9658 (96.58%)
+==============================
+
+[세부 분류 리포트]
+              precision    recall  f1-score   support
+
+           0       0.97      0.97      0.97      8059
+           1       0.95      0.97      0.96      1531
+           2       0.95      0.95      0.95      4573
+           3       0.98      0.97      0.97      5837
+
+    accuracy                           0.97     20000
+   macro avg       0.96      0.96      0.96     20000
+weighted avg       0.97      0.97      0.97     20000
+
+
+[혼동 행렬 (Confusion Matrix)]
+[[7840   30  140   49]
+ [  23 1478    4   26]
+ [ 151    3 4359   60]
+ [  83   44   70 5640]]
+
+(행: 실제값, 열: 예측값)

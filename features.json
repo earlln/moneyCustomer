@@ -1,0 +1,22 @@
+{
+  "project_name": "금전 대고객 작업 분류",
+  "version": "1.7",
+  "input_columns": ["작업의뢰명", "작업의뢰내용", "시스템명"],
+  "target_column": "금전대고객구분",
+  "threshold": 0.5,
+  "class_labels": {
+    "0": "비주요작업",
+    "1": "금전작업",
+    "2": "대고객작업",
+    "3": "금전+대고객"
+  },
+  "major_classes": [1, 2, 3],
+  "description": "class 0=비주요작업, 1=금전작업, 2=대고객작업, 3=둘다. major_classes 중 하나라도 threshold 이상이면 주요작업.",
+  "files": {
+    "train_data": "train_20260527.csv",
+    "input": "input_20260527.csv",
+    "output": "output_20260527.csv",
+    "model": "request_model.pkl",
+    "vectorizer": "request_vectorizer.pkl"
+  }
+}
